@@ -3,6 +3,9 @@ import subprocess
 import sys
 from getpass import getpass
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
@@ -30,9 +33,13 @@ def generate_launch_description():
         print(f"Environment Variable Set: RMW_IMPLEMENTATION={os.environ.get('RMW_IMPLEMENTATION')}")
 
     rviz_config = get_package_share_directory('rslidar_sdk') + '/rviz/rviz2.rviz'
+    rviz_enabled = LaunchConfiguration('rviz')
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'rviz',
+            default_value='false',
+            description='Start RViz together with the RoboSense driver.'),
         Node(namespace='rslidar_sdk', package='rslidar_sdk', executable='rslidar_sdk_node', output='screen'),
-        Node(namespace='rviz2', package='rviz2', executable='rviz2', arguments=['-d', rviz_config])
+        Node(namespace='rviz2', package='rviz2', executable='rviz2', arguments=['-d', rviz_config], condition=IfCondition(rviz_enabled))
     ])
-

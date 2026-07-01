@@ -61,6 +61,7 @@ protected:
   void putPacket(const Packet& msg);
   void putException(const lidar::Error& msg);
   void processPointCloud();
+  void logDeviceInfoOnce();
 
   std::shared_ptr<lidar::LidarDriver<LidarPointCloudMsg>> driver_ptr_;
   SyncQueue<std::shared_ptr<LidarPointCloudMsg>> free_point_cloud_queue_;
@@ -75,10 +76,11 @@ protected:
 #endif
   std::thread point_cloud_process_thread_;
   bool to_exit_process_;
+  bool device_info_logged_;
 };
 
 SourceDriver::SourceDriver(SourceType src_type)
-  : Source(src_type), to_exit_process_(false)
+  : Source(src_type), to_exit_process_(false), device_info_logged_(false)
 {
 }
 
@@ -257,10 +259,37 @@ void SourceDriver::processPointCloud()
     {
       continue;
     }
+    logDeviceInfoOnce();
     sendPointCloud(msg);
     
     free_point_cloud_queue_.push(msg);
   }
+}
+
+inline void SourceDriver::logDeviceInfoOnce()
+{
+  if (device_info_logged_)
+  {
+    return;
+  }
+
+  DeviceInfo info;
+  if (!driver_ptr_->getDeviceInfo(info))
+  {
+    return;
+  }
+
+  device_info_logged_ = true;
+  RS_INFO << "------------------------------------------------------" << RS_REND;
+  RS_INFO << "             RoboSense LiDAR Device Info " << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.qx: " << info.qx << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.qy: " << info.qy << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.qz: " << info.qz << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.qw: " << info.qw << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.x: " << info.x << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.y: " << info.y << RS_REND;
+  RS_INFOL << "imu_lidar_extrinsic.z: " << info.z << RS_REND;
+  RS_INFO << "------------------------------------------------------" << RS_REND;
 }
 
 inline void SourceDriver::putException(const lidar::Error& msg)
